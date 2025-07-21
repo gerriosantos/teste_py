@@ -1,4 +1,4 @@
-# 📊 teste_py - Dashboard com Dash
+# Dashboard com Dash
 
 Bem-vindo ao **teste_py**! Este projeto tem como objetivo criar um dashboard interativo utilizando o pacote [Dash](https://dash.plotly.com/), facilitando a visualização e análise de dados de forma intuitiva e acessível.
 
