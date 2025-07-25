@@ -1,48 +1,66 @@
 import pandas as pd
 import numpy as np
+import os
 
-def gerar_base_bruta(qtd_alunos=30, seed=42):
+def gerar_base_bruta(qtd_alunos=200, seed=42):
     np.random.seed(seed)
     nomes = [f"Aluno_{i+1}" for i in range(qtd_alunos)]
-    turmas = np.random.choice(['A', 'B', 'C'], size=qtd_alunos)
-    # Simula avaliações em diferentes datas e com possíveis erros de digitação
+    turmas = np.random.choice(['A', 'B', 'C', 'D'], size=qtd_alunos)
+    municipios = np.random.choice(['Município 1', 'Município 2', 'Município 3'], size=qtd_alunos)
+    regionais = np.random.choice(['Regional Norte', 'Regional Sul'], size=qtd_alunos)
+    estados = np.random.choice(['Estado X', 'Estado Y'], size=qtd_alunos)
+    categorias = np.random.choice([
+        'pré-leitor1', 'pré-leitor2', 'pré-leitor3', 'pré-leitor4', 'iniciante', 'fluente'
+    ], size=qtd_alunos, p=[0.15, 0.15, 0.15, 0.15, 0.2, 0.2])
     datas = pd.date_range('2025-03-01', periods=5, freq='M')
     registros = []
-    for nome, turma in zip(nomes, turmas):
-        for data in np.random.choice(datas, size=np.random.randint(2, 6)):
-            fluencia = np.random.normal(75, 15)
-            # Simula erros de digitação e valores extremos
-            if np.random.rand() < 0.05:
-                fluencia = np.random.choice([0, 200, -10, 999])
+    for i, nome in enumerate(nomes):
+        for data in np.random.choice(datas, size=np.random.randint(1, 3)):
+            cat = categorias[i]
+            if cat == 'pré-leitor1':
+                fluencia = np.random.normal(10, 3)
+            elif cat == 'pré-leitor2':
+                fluencia = np.random.normal(20, 4)
+            elif cat == 'pré-leitor3':
+                fluencia = np.random.normal(30, 5)
+            elif cat == 'pré-leitor4':
+                fluencia = np.random.normal(40, 6)
+            elif cat == 'iniciante':
+                fluencia = np.random.normal(60, 8)
+            else:
+                fluencia = np.random.normal(90, 10)
             registros.append({
                 'aluno_nome': nome,
-                'turma': turma,
+                'turma': turmas[i],
+                'municipio': municipios[i],
+                'regional': regionais[i],
+                'estado': estados[i],
+                'categoria_leitor': cat,
                 'data_avaliacao': data.strftime('%d/%m/%Y'),
-                'fluencia': round(fluencia, 1)
+                'fluencia': max(0, round(fluencia, 1))
             })
     return pd.DataFrame(registros)
 
 def etl_fluencia(df_bruta):
-    # Corrige nomes das colunas
     df = df_bruta.rename(columns={
         'aluno_nome': 'Aluno',
         'turma': 'Turma',
+        'municipio': 'Município',
+        'regional': 'Regional',
+        'estado': 'Estado',
+        'categoria_leitor': 'Categoria',
         'data_avaliacao': 'Data',
         'fluencia': 'Fluência'
     })
-    # Remove valores extremos e negativos
     df = df[(df['Fluência'] >= 0) & (df['Fluência'] <= 150)]
-    # Converte datas
     df['Data'] = pd.to_datetime(df['Data'], dayfirst=True)
-    # Mantém apenas a última avaliação de cada aluno
-    df = df.sort_values('Data').groupby(['Aluno', 'Turma'], as_index=False).last()
+    df = df.sort_values('Data').groupby(['Aluno', 'Turma', 'Município', 'Regional', 'Estado'], as_index=False).last()
     return df
 
 if __name__ == "__main__":
-    # Gera base bruta e salva para inspeção
+    os.makedirs('data', exist_ok=True)
     df_bruta = gerar_base_bruta()
     df_bruta.to_csv('data/fluencia_bruta.csv', index=False)
-    # Executa ETL e salva base tratada
     df_tratada = etl_fluencia(df_bruta)
     df_tratada.to_csv('data/fluencia_tratada.csv', index=False)
     print('Bases salvas em data/fluencia_bruta.csv e data/fluencia_tratada.csv')
