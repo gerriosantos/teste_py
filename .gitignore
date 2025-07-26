@@ -1,0 +1,5 @@
+# Ignorar arquivos CSV de dados
+*.csv
+
+data/
+!data/*.md

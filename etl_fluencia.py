@@ -36,7 +36,7 @@ def gerar_base_bruta(qtd_alunos=200, seed=42):
                 'regional': regionais[i],
                 'estado': estados[i],
                 'categoria_leitor': cat,
-                'data_avaliacao': data.strftime('%d/%m/%Y'),
+                'data_avaliacao': pd.Timestamp(data).strftime('%d/%m/%Y'),
                 'fluencia': max(0, round(fluencia, 1))
             })
     return pd.DataFrame(registros)
