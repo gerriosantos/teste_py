@@ -15,41 +15,113 @@ if 'Escola' not in df.columns:
     df['Escola'] = df['Município'].apply(lambda x: escolas[hash(x) % len(escolas)])
 
 
-# Inicializar o app Dash
-app = Dash(__name__)
 
-# Layout com abas
+
+# Inicializar o app Dash com suppress_callback_exceptions
+app = Dash(__name__, suppress_callback_exceptions=True)
+
+# Configurações das abas e colunas, com ícones e tooltips
+tabs_config = [
+    {'label': 'Aluno', 'value': 'aluno', 'col': 'Aluno', 'tipo': 'bar', 'icon': '👤', 'tooltip': 'Visualize dados por aluno individualmente.'},
+    {'label': 'Turma', 'value': 'turma', 'col': 'Turma', 'tipo': 'box', 'icon': '👥', 'tooltip': 'Compare turmas e veja a distribuição de fluência.'},
+    {'label': 'Regional', 'value': 'regional', 'col': 'Regional', 'tipo': 'violin', 'icon': '🗺️', 'tooltip': 'Veja a fluência por regionais de ensino.'},
+    {'label': 'Estado', 'value': 'estado', 'col': 'Estado', 'tipo': 'bar', 'icon': '🏳️', 'tooltip': 'Compare estados.'},
+    {'label': 'Escola', 'value': 'escola', 'col': 'Escola', 'tipo': 'bar', 'icon': '🏫', 'tooltip': 'Veja resultados por escola.'},
+    {'label': 'Município', 'value': 'municipio', 'col': 'Município', 'tipo': 'bar', 'icon': '🏙️', 'tooltip': 'Compare municípios.'},
+]
+
+# Função para criar gráficos customizados
+def criar_grafico(dff, x, tipo, color='Categoria'):
+    if tipo == 'bar':
+        fig = px.bar(
+            dff, x=x, y='Fluência', color=color,
+            title=f'Fluência por {x}', labels={'Fluência': 'Nota de Fluência'},
+            color_discrete_sequence=px.colors.sequential.Blues_r
+        )
+    elif tipo == 'box':
+        fig = px.box(
+            dff, x=x, y='Fluência', color=color,
+            title=f'Distribuição de Fluência por {x}',
+            color_discrete_sequence=px.colors.sequential.Blues_r
+        )
+    elif tipo == 'violin':
+        fig = px.violin(
+            dff, x=x, y='Fluência', color=color,
+            box=True, points='all', title=f'Fluência por {x}',
+            color_discrete_sequence=px.colors.sequential.Blues_r
+        )
+    else:
+        fig = px.bar(dff, x=x, y='Fluência', color=color)
+    fig.update_layout(
+        plot_bgcolor='#f7f9fb',
+        paper_bgcolor='#f7f9fb',
+        font_color='#1a2639',
+        title_font_color='#1a2639',
+        legend_title_font_color='#1a2639',
+        legend_bgcolor='#e8ecf4',
+        legend_bordercolor='#bfc9d9',
+        legend_borderwidth=1
+    )
+    return fig
+
+# Layout com abas e tema customizado, com tooltips
 app.layout = html.Div([
     html.H1('📊 Dashboard de Avaliação de Fluência', style={
         'textAlign': 'center',
-        'color': '#2c3e50',
+        'color': '#1a2639',
         'marginBottom': '10px',
         'marginTop': '20px',
         'fontWeight': 'bold',
+        'letterSpacing': '1px',
     }),
     html.P('Explore os dados de fluência por diferentes perspectivas usando as abas abaixo.', style={
         'textAlign': 'center',
-        'color': '#34495e',
+        'color': '#3b4a5a',
         'fontSize': '18px',
         'marginBottom': '30px',
     }),
-    dcc.Tabs(id='tabs', value='aluno', children=[
-        dcc.Tab(label='Aluno', value='aluno'),
-        dcc.Tab(label='Turma', value='turma'),
-        dcc.Tab(label='Regional', value='regional'),
-        dcc.Tab(label='Estado', value='estado'),
-        dcc.Tab(label='Escola', value='escola'),
-        dcc.Tab(label='Município', value='municipio'),
-    ]),
+    dcc.Tabs(
+        id='tabs', value='aluno',
+        children=[
+            dcc.Tab(
+                label=f"{tab['icon']} {tab['label']}",
+                value=tab['value'],
+                style={
+                    'background': '#e8ecf4',
+                    'color': '#1a2639',
+                    'fontWeight': 'bold',
+                    'fontSize': '17px',
+                    'padding': '10px 18px',
+                    'borderRight': '1px solid #d0d7de',
+                },
+                selected_style={
+                    'background': '#1a2639',
+                    'color': '#fff',
+                    'fontWeight': 'bold',
+                    'fontSize': '17px',
+                    'padding': '10px 18px',
+                    'borderRight': '1px solid #d0d7de',
+                    'boxShadow': '0 2px 8px #bfc9d9',
+                }
+            ) for tab in tabs_config
+        ],
+        style={
+            'marginBottom': '20px',
+            'borderRadius': '10px',
+            'boxShadow': '0 2px 8px #d0d7de',
+            'overflow': 'hidden',
+        }
+    ),
     html.Div(id='conteudo-aba')
 ], style={
-    'maxWidth': '900px',
+    'maxWidth': '950px',
     'margin': 'auto',
-    'padding': '30px',
-    'backgroundColor': '#f4f6fb',
-    'borderRadius': '15px',
-    'boxShadow': '0 4px 16px #d0d7de',
+    'padding': '32px',
+    'backgroundColor': '#f7f9fb',
+    'borderRadius': '18px',
+    'boxShadow': '0 6px 24px #bfc9d9',
     'minHeight': '100vh',
+    'border': '1px solid #e0e6ed',
 })
 
 
@@ -59,140 +131,43 @@ app.layout = html.Div([
     Input('tabs', 'value')
 )
 def renderizar_aba(aba):
-    if aba == 'aluno':
-        return html.Div([
-            html.H3('Visualização por Aluno'),
-            dcc.Dropdown(
-                id='aluno-dropdown',
-                options=[{'label': a, 'value': a} for a in sorted(df['Aluno'].unique())],
-                value=None,
-                placeholder='Selecione um aluno',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-aluno')
-        ])
-    elif aba == 'turma':
-        return html.Div([
-            html.H3('Visualização por Turma'),
-            dcc.Dropdown(
-                id='turma-dropdown',
-                options=[{'label': t, 'value': t} for t in sorted(df['Turma'].unique())],
-                value=None,
-                placeholder='Selecione uma turma',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-turma')
-        ])
-    elif aba == 'regional':
-        return html.Div([
-            html.H3('Visualização por Regional'),
-            dcc.Dropdown(
-                id='regional-dropdown',
-                options=[{'label': r, 'value': r} for r in sorted(df['Regional'].unique())],
-                value=None,
-                placeholder='Selecione uma regional',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-regional')
-        ])
-    elif aba == 'estado':
-        return html.Div([
-            html.H3('Visualização por Estado'),
-            dcc.Dropdown(
-                id='estado-dropdown',
-                options=[{'label': e, 'value': e} for e in sorted(df['Estado'].unique())],
-                value=None,
-                placeholder='Selecione um estado',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-estado')
-        ])
-    elif aba == 'escola':
-        return html.Div([
-            html.H3('Visualização por Escola'),
-            dcc.Dropdown(
-                id='escola-dropdown',
-                options=[{'label': e, 'value': e} for e in sorted(df['Escola'].unique())],
-                value=None,
-                placeholder='Selecione uma escola',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-escola')
-        ])
-    elif aba == 'municipio':
-        return html.Div([
-            html.H3('Visualização por Município'),
-            dcc.Dropdown(
-                id='municipio-dropdown',
-                options=[{'label': m, 'value': m} for m in sorted(df['Município'].unique())],
-                value=None,
-                placeholder='Selecione um município',
-                clearable=True
-            ),
-            dcc.Graph(id='grafico-municipio')
-        ])
-    return html.Div()
+    # Busca config da aba
+    tab = next((t for t in tabs_config if t['value'] == aba), None)
+    if not tab:
+        return html.Div()
+    col = tab['col']
+    idx = aba
+    return html.Div([
+        html.H3(f'Visualização por {tab["label"]}'),
+        dcc.Dropdown(
+            id={'type': 'dropdown', 'index': idx},
+            options=[{'label': v, 'value': v} for v in sorted(df[col].unique())],
+            value=None,
+            placeholder=f'Selecione um {tab["label"].lower()}',
+            clearable=True
+        ),
+        dcc.Graph(id={'type': 'grafico', 'index': idx})
+    ])
 
-# Callbacks para gráficos de cada aba
-@app.callback(
-    Output('grafico-aluno', 'figure'),
-    Input('aluno-dropdown', 'value')
-)
-def grafico_aluno(aluno):
-    dff = df if not aluno else df[df['Aluno'] == aluno]
-    fig = px.bar(dff, x='Aluno', y='Fluência', color='Categoria',
-                 title='Fluência por Aluno', labels={'Fluência': 'Nota de Fluência'})
-    return fig
 
-@app.callback(
-    Output('grafico-turma', 'figure'),
-    Input('turma-dropdown', 'value')
-)
-def grafico_turma(turma):
-    dff = df if not turma else df[df['Turma'] == turma]
-    fig = px.box(dff, x='Turma', y='Fluência', color='Categoria',
-                 title='Distribuição de Fluência por Turma')
-    return fig
 
-@app.callback(
-    Output('grafico-regional', 'figure'),
-    Input('regional-dropdown', 'value')
-)
-def grafico_regional(regional):
-    dff = df if not regional else df[df['Regional'] == regional]
-    fig = px.violin(dff, x='Regional', y='Fluência', color='Categoria',
-                   box=True, points='all', title='Fluência por Regional')
-    return fig
-
-@app.callback(
-    Output('grafico-estado', 'figure'),
-    Input('estado-dropdown', 'value')
-)
-def grafico_estado(estado):
-    dff = df if not estado else df[df['Estado'] == estado]
-    fig = px.bar(dff, x='Estado', y='Fluência', color='Categoria',
-                 title='Fluência por Estado')
-    return fig
-
-@app.callback(
-    Output('grafico-escola', 'figure'),
-    Input('escola-dropdown', 'value')
-)
-def grafico_escola(escola):
-    dff = df if not escola else df[df['Escola'] == escola]
-    fig = px.bar(dff, x='Escola', y='Fluência', color='Categoria',
-                 title='Fluência por Escola')
-    return fig
-
-@app.callback(
-    Output('grafico-municipio', 'figure'),
-    Input('municipio-dropdown', 'value')
-)
-def grafico_municipio(municipio):
-    dff = df if not municipio else df[df['Município'] == municipio]
-    fig = px.bar(dff, x='Município', y='Fluência', color='Categoria',
-                 title='Fluência por Município')
-    return fig
+# Callbacks individuais para cada gráfico das abas
+from dash import callback_context
+for tab in tabs_config:
+    aba = tab['value']
+    col = tab['col']
+    tipo = tab['tipo']
+    dropdown_id = {'type': 'dropdown', 'index': aba}
+    graph_id = {'type': 'grafico', 'index': aba}
+    def make_callback(col=col, tipo=tipo, dropdown_id=dropdown_id, graph_id=graph_id):
+        @app.callback(
+            Output(graph_id, 'figure'),
+            Input(dropdown_id, 'value'),
+        )
+        def update_graph(value):
+            dff = df if not value else df[df[col] == value]
+            return criar_grafico(dff, col, tipo)
+    make_callback()
 
 
 # Callback para atualizar o gráfico e a média
